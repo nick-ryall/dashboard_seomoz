@@ -1,2 +1,0 @@
- - unzip the contents to a folder
- - open up index.php in a browser
