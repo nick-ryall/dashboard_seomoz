@@ -1,0 +1,15 @@
+/* PANEL: Google SEOmoz */
+
+.seomoz_panel .info dl {
+	margin-bottom: 20px;
+	overflow: hidden;
+}
+.seomoz_panel .info dt {
+	float: left;
+	clear: left;
+	width: 65%;
+}
+.seomoz_panel .info dd {
+	float: left;
+	width: 35%;
+}

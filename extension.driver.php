@@ -1,19 +1,24 @@
 <?php
 
-	class extension_dashboard_analytics extends Extension {
+	require_once 'lib/class.seomozapi.php';
+	
+	class extension_dashboard_seomoz extends Extension {
 		private $params = array();
-
+		
+		public static $seomoz_cache;
+	
+		
 		public function about() {
 			return array(
-				'name'			=> 'Dashboard Analytics',
+				'name'			=> 'Dashboard SEOmoz',
 				'version'		=> '1.0',
-				'release-date'	=> '2011-03-14',
+				'release-date'	=> '2011-09-22',
 				'author'		=> array(
 					'name'			=> 'Nick Ryall',
 					'website'		=> 'http://randb.com.au/',
 					'email'			=> 'nick@randb.com.au'
 				),
-				'description'	=> 'Uses Nick Dunn\'s Dashboard Extension to display analytics information in a custom panel'
+				'description'	=> 'Uses Nick Dunn\'s Dashboard Extension to SEOmoz API information in a custom panel'
 	 		);
 		}
 		
@@ -45,27 +50,33 @@
 		
 		
 		public function dashboard_panel_types($context) {
-		    $context['types']['analytics_panel'] = 'Google Analytics Panel';
+		    $context['types']['seomoz_panel'] = 'SEOmoz Panel';
 		}
 		
 		
 		public function dashboard_panel_options($context) {
 		    // make sure it's your own panel type, as this delegate fires for all panel types!
-		    if ($context['type'] != 'analytics_panel') return;
+		    if ($context['type'] != 'seomoz_panel') return;
 		
+
 		    $config = $context['existing_config'];
-		
+
+		    
 		    $fieldset = new XMLElement('fieldset', NULL, array('class' => 'settings'));
-		    $fieldset->appendChild(new XMLElement('legend', 'My Google Analytics Account'));
+		    $fieldset->appendChild(new XMLElement('legend', 'My SEOmoz Account'));
+		    
+		     $p = new XMLElement('p', 'If you have an SEOmoz.org account, you can log in and find your credentials on the `http://www.seomoz.org/api` page.	If you don\'t have a free SEOmoz.org account, sign up, and visit the API page to retrieve your API credentials.');
+		     
+		    $fieldset->appendChild($p);
+		    
+		    $domain = Widget::Label('Domain', Widget::Input('config[domain]', $config['domain']));
+		    $fieldset->appendChild($domain);
 		
-		    $email = Widget::Label('Email', Widget::Input('config[ga-email]', $config['ga-email']));
-		    $fieldset->appendChild($email);
+		    $access_id = Widget::Label('Access ID', Widget::Input('config[access_id]', $config['access_id']));
+		    $fieldset->appendChild($access_id);
 		    
-		    $password = Widget::Label('Password', Widget::Input('config[ga-password]', $config['ga-password'], 'password'));
-		    $fieldset->appendChild($password);
-		    
-		    $profile_id = Widget::Label('Profile ID', Widget::Input('config[ga-profile-id]', $config['ga-profile-id']));
-		    $fieldset->appendChild($profile_id);
+		    $secret_key = Widget::Label('Secret Key', Widget::Input('config[secret_key]', $config['secret_key']));
+		    $fieldset->appendChild($secret_key);
 		
 		    $context['form'] = $fieldset;
 		
@@ -73,124 +84,127 @@
 		
 		
 		public function render_panel($context) {
-		    if ($context['type'] != 'analytics_panel') return;
+		    if ($context['type'] != 'seomoz_panel') return;
 		    $config = $context['config'];
-		    $context['panel']->appendChild(extension_dashboard_analytics::display_results($config['ga-email'], $config['ga-password'], $config['ga-profile-id']));
+		    $context['panel']->appendChild(extension_dashboard_seomoz::display_results($config['access_id'], $config['secret_key'], $config['domain']));
 		}
 
-		public function display_results($email, $password, $profile_id) {
-		
-			
-			require_once 'lib/analytics.class.php';
-			
-			// session_start for caching
-			session_start();
-			
+		public function display_results($access_id, $secret_key, $domain) {
+	
 			try {
-			    
-			    // construct the class
-			    $oAnalytics = new analytics($email, $password);
-			    
-			    // set it up to use caching
-			    $oAnalytics->useCache();
-			    
-			    //$oAnalytics->setProfileByName('[Google analytics accountname]');
-			    $oAnalytics->setProfileById('ga:'.$profile_id);
-			    
-			    // set the date range
-			    $last_month = date("Y-m-d", strtotime('today - 30 days'));
-			    $today = date("Y-m-d", strtotime('today'));
-			    //$oAnalytics->setMonth(date('n'), date('Y'));
-			    $oAnalytics->setDateRange($last_month, $today);
-			    
-			    $wrapper = new XMLElement('div');
-			    
-			    $graph = extension_dashboard_analytics::buildChart($oAnalytics);
-				$wrapper->appendChild($graph);
-			    
-			    $info = new XMLElement('div');
-			    $info->setAttribute('class', 'info');
-			    $info_header = new XMLElement('h4', 'Quick Information');
-			    $dl_results = new XMLElement('dl');
-			    
-			    //Total Pageviews
-			    $dt_pageviews = new XMLElement('dt', 'Pageviews');
-			    $dd_pageviews = new XMLElement('dd', array_sum($oAnalytics->getPageviews()));
-			    
-			    $dl_results->appendChild($dt_pageviews);
-			    $dl_results->appendChild($dd_pageviews);
-			    
-			    //Total Visits
-			    $dt_visits = new XMLElement('dt', 'Visits');
-			    $dd_visits = new XMLElement('dd', array_sum($oAnalytics->getVisitors()));
-			    
-			    $dl_results->appendChild($dt_visits);
-			    $dl_results->appendChild($dd_visits);
-			    
-			    //Pages/Visit
-			    $pages_visits = $oAnalytics->getData(
-			     	array('metrics'=> urlencode('ga:pageviewsPerVisit'))
-			    );
-		     	$dt_pages_visits = new XMLElement('dt', 'Pages per Visit');
-		     	$dd_pages_visits = new XMLElement('dd',  round(array_sum($pages_visits),2));
-		     	$dl_results->appendChild($dt_pages_visits);
-		     	$dl_results->appendChild($dd_pages_visits);
-			    
-			    $bounce_rate = $oAnalytics->getData(
-			    	array('metrics'=> urlencode('ga:visitBounceRate'))
-			    );
-			    $dt_bounce_rate = new XMLElement('dt', 'Bounce Rate');
-			    $dd_bounce_rate = new XMLElement('dd', round(array_sum($bounce_rate),2).'%');
-			    $dl_results->appendChild($dt_bounce_rate );
-			    $dl_results->appendChild($dd_bounce_rate);
-			    
-			    //% New Visits
-			    $new_visits = $oAnalytics->getData(
-			    	array('metrics'=> urlencode('ga:percentNewVisits'))
-			    );
-			  	$dt_new_visits = new XMLElement('dt', '% New Visits');
-			  	$dd_new_visits = new XMLElement('dd',  round(array_sum($new_visits),2).'%');
-			  	$dl_results->appendChild($dt_new_visits);
-			  	$dl_results->appendChild($dd_new_visits);
-			  	
-			  	
-			  	//Avg Time on Site
-			  	$average_time = $oAnalytics->getData(
-			  		array('metrics'=> urlencode('ga:avgTimeOnSite'))
-			  	);
-		  		$dt_average_time = new XMLElement('dt', 'Avg. Time on Site');
-		  		$dd_average_time = new XMLElement('dd',  extension_dashboard_analytics::sec2hms(round(array_sum($average_time),0)));
-		  		$dl_results->appendChild($dt_average_time);
-		  		$dl_results->appendChild($dd_average_time);
-			  	
+				$this->access_id = $access_id;
+				$this->secret_key = $secret_key;
+				
+				$seomozapi = new SEOMozAPI( $access_id, $secret_key );
+				$urlmetrics = simplexml_load_string( $seomozapi->urlmetrics( $domain ) );
+				
+				$target_url = preg_replace('!http(s)?:\/\/!', '', $domain);
+				
+				$attribution = str_replace( '/', '%252F', rtrim($target_url,"/") );
+				$attribution = "http://www.opensiteexplorer.org/links/?site=".$attribution;
+				
+				$wrapper = new XMLElement('div');
+				
+				$info = new XMLElement('div');
+				$info->setAttribute('class', 'info');
+				
+				
+				//mozRank
+				$rank_header = new XMLElement('h4', 'Domain mozRank');
+				$info->appendChild($rank_header);
+				$rank_info = new XMLElement('p', 'Measure of the mozRank <a href="http://www.opensiteexplorer.org/About#faq_5" target="_blank">(?)</a> of the domain in the Linkscape index');
+				$info->appendChild($rank_info);
+				
+				$dl_results = new XMLElement('dl');
+				
+				//10 Point Score
+				$dt_score = new XMLElement('dt', '10-point score');
+				$dd_score = new XMLElement('dd', '<a target="_blank" href="'.$attribution.'">'.$urlmetrics->fmrp.'</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+				
+				//Raw Score
+				$dt_score = new XMLElement('dt', 'Raw score');
+				$dd_score = new XMLElement('dd', '<a target="_blank" href="'.$attribution.'">'.$urlmetrics->fmrr.'</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+				
+				//Domain Authority
+				$dt_score = new XMLElement('dt', 'Domain Authority <a href="http://apiwiki.seomoz.org/w/page/20902104/Domain-Authority/" target="_blank">(?)</a>');
+				$dd_score = new XMLElement('dd', '<a target="_blank" href="' . $attribution . '" target="_blank">' .$urlmetrics->pda . '</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+				
+				$info->appendChild($dl_results);
+				
+				
+				//External Links
+				$external_links_header = new XMLElement('h4', 'External Links to Homepage');
+				$info->appendChild($external_links_header);
+				
+				$dl_results = new XMLElement('dl');
+				
+				$dt_score = new XMLElement('dt', 'The number of external (from other subdomains), juice passing links <a href="http://apiwiki.seomoz.org/w/page/13991139/Juice-Passing" target="_blank">(?)</a> to the target URL in the Linkscape index');
+				$dd_score = new XMLElement('dd', '<a target="_blank" href="' . $attribution . '" target="_blank">' .$urlmetrics->ueid . '</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+				
+				$info->appendChild($dl_results);
+				
 
-				$search_terms = new XMLElement('div');
-			    $search_terms->setAttribute('class', 'terms');
-			    
-			    //Search Terms
-			    $terms_head = new XMLElement('h4', 'Top Keywords');
-			    $terms = new XMLElement('ol');
-			    $keywords = array_keys($oAnalytics->getSearchWords());
+				//Links to homepage
+				$homepage_links_header = new XMLElement('h4', 'Links to Homepage');
+				$info->appendChild($homepage_links_header);
+				$dl_results = new XMLElement('dl');
+				
+				$dt_score = new XMLElement('dt', 'The number of internal and external, juice and non-juice passing links <a href="http://apiwiki.seomoz.org/w/page/13991139/Juice-Passing" target="_blank">(?)</a> to the target URL in the Linkscape index');
+				$dd_score = new XMLElement('dd', '<a href="' . $attribution . '" target="_blank">' .$urlmetrics->uid . '</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+				
+				$info->appendChild($dl_results);
 
-			    $count = 0;
-			    foreach($keywords as $keyword) {	
-			    	$item = new XMLElement('li', $keyword);
-			    	$terms->appendChild($item);
-			    	$count++;
-			    	if ($count == 10) break;
-			    }
-			
-			    $info->appendChild($info_header);
-			    $info->appendChild($dl_results);
-			
-			    $search_terms->appendChild($terms_head);
-			    $search_terms->appendChild($terms);
-			
+				
+				//Homepage mozRank
+				$homepage_mozrank_header = new XMLElement('h4', 'Homepage mozRank');
+				$info->appendChild($homepage_mozrank_header);
+				$homepage_mozrank_info = new XMLElement('p', 'Measure of the mozRank <a href="http://www.opensiteexplorer.org/About#faq_5" target="_blank">(?)</a> of the homepage URL in the Linkscape index');
+				$info->appendChild($homepage_mozrank_info);
+				
+				$dl_results = new XMLElement('dl');
+				
+				//10 Point Score
+				$dt_score = new XMLElement('dt', '10-point score');
+				$dd_score = new XMLElement('dd', '<a href="'.$attribution.'">'.$urlmetrics->umrp.'</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+				
+				
+				//Raw Score
+				$dt_score = new XMLElement('dt', 'Raw score');
+				$dd_score = new XMLElement('dd', '<a href="'.$attribution.'">'.$urlmetrics->umrr.'</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+
+				//Homepage Authority
+				$dt_score = new XMLElement('dt', 'Homepage Authority <a href="http://apiwiki.seomoz.org/Page-Authority" target="_blank">(?)</a>');
+				$dd_score = new XMLElement('dd', '<a href="' . $attribution . '" target="_blank">' .$urlmetrics->upa . '</a>');
+				
+				$dl_results->appendChild($dt_score);
+				$dl_results->appendChild($dd_score);
+				
+				$info->appendChild($dl_results);
+				
+
 			    $wrapper->appendChild($info);
-			$wrapper->appendChild($search_terms);
-
 			    return $wrapper;
-
 			    
 			} catch (Exception $e) { 
 			   
@@ -200,175 +214,18 @@
 			   $info->appendChild($info_header);
 			   $info_header->appendChild(new XMLElement('p', '<code>'.(string)$e->getMessage().'</code>'));
 			   return $info;
-
-			   
-			} 
-				
-		}
-		
-		
-		public function buildChart($oAnalytics) {
-		
-			require_once 'lib/google_chart.php'; // By Andrey Savchenko (Rarst), http://www.rarst.net/script/google-chart/
-			
-			
-			// Generating visit arrays for the date range.
-			 $visit_report = $oAnalytics->getData(
-			 	array('dimensions'=>urlencode('ga:date'),
-			 	'metrics'=>urlencode('ga:visits'),
-			 ));
-			 
-			 
-			 $visits = array();
-			 foreach($visit_report as $dimensions => $metric) {
-			 	array_push($visits, $metric);
-			 }
-			 
-			 // Generating visit arrays for the date range.
-			  $views_report = $oAnalytics->getData(
-			  	array('dimensions'=>urlencode('ga:date'),
-			  	'metrics'=>urlencode('ga:pageviews'),
-			  ));
-			  
-			  
-			  $page_views = array();
-			  foreach($views_report as $dimensions => $metric) {
-			  	array_push($page_views, $metric);
-			  }
-			
-			// Extract various dates from the report array keys in order to use them as variables for x-axis labels
-			$days = array_keys($views_report);
-			list($d0, $d1, $d2, $d3, $d4, $d5, $d6, $d7, $d8, $d9, $d10, $d11, $d12, $d13,
-			$d14, $d15, $d16, $d17, $d18, $d19, $d20, $d21,$d22,$d23,$d24,$d25,$d26,$d27,$d28, $d29, $d30) = $days;
-			
-			
-			// Get the keys for max. values of page views and visits
-			function max_key($array) {
-			 foreach ($array as $key => $val) {
-			 if ($val == max($array)) return $key;
-			 }
-			}
-			$array = $page_views;
-			$precord = max_key($array);
-			$array = $visits;
-			$vrecord = max_key($array);
-			
-			// Always use max. value recorded in array for y-axis
-			$ymax = 1*(ceil(max($page_views)));
-			// Devide it by six and round up to nearest whole number to set appropriate y-axis ticks
-			$ytick = ceil((max($page_views))/6);
-			
-			// Chart settings
-			$traffic = new GoogleChart;
-			$traffic->type='lc';
-			$traffic->SetImageSize(700,200);
-			$traffic->SetChartMargins(20,20,20,20);
-			$traffic->SetEncode('simple');
-			$traffic->AddData($visits);
-			$traffic->AddData($page_views);
-			
-			$traffic->AddChartColor('FF9900');
-			$traffic->AddChartColor('0077CC');
-			
-			$traffic->AddLineStyle(3);
-			$traffic->AddLineStyle(3);
-
-			
-			$traffic->AddFillArea('B','FF99007F',0);
-			$traffic->AddFillArea('b','E6F2FA7F',0,1);
-			
-			$traffic->AddShapeMarker('o','FFFFFF',0,-1,9);
-			$traffic->AddShapeMarker('o','FF9900',0,-1,7);
-			$traffic->AddShapeMarker('o','FFFFFF',1,-1,9);
-			$traffic->AddShapeMarker('o','0077CC',1,-1,7);
-
-			
-			$traffic->AddAxis('y,x');
-			$traffic->AddAxisRange(0,round($ymax,-3),round($ytick, -3));
-			$traffic->AddAxisLabel(extension_dashboard_analytics::formatDates(array($d0,$d10,$d20,$d30)),1);
-
-			$traffic->SetGrid(round(100/30,2),round(100/6,2),1,3);
-			
-			
-			$traffic->SetTitle('Visits and Page Views of last 30 days');
-			$traffic->AddLegend('visits');
-			$traffic->AddLegend('page views');
-			$traffic->SetLegendPosition('b');
-			
-			
-
-			// Generate chart URL
-	
-			
-			$graph = new XMLElement('div', $traffic->GetImg());
-			$graph->setAttribute('class', 'graph');
-			return $graph;
-		
+			} 	
 		}
 		
 		/*-------------------------------------------------------------------------
 			Utitilites:
 		-------------------------------------------------------------------------*/
 		
-		public function formatDates($dates) {
-		
-			$formatted_dates = array();
-			foreach($dates as $date) {
-				
-				$date = date("Y-m-d", strtotime(str_replace('ga:date=', '', $date)));
-				
-				array_push($formatted_dates, $date);
-			
-			}
-			
-			return $formatted_dates;
-		
-		}
-		
-		
+
 		public function append_assets($context) {
 			$page = $context['parent']->Page;
-			$page->addStylesheetToHead(URL . '/extensions/dashboard_analytics/assets/dashboard.analytics.index.css', 'screen', 1000);
+			$page->addStylesheetToHead(URL . '/extensions/dashboard_seomoz/assets/dashboard.seomoz.index.css', 'screen', 1000);
 		}
-		
-		
-		
-		public function sec2hms ($sec, $padHours = false) 
-		  {
-		
-		    // start with a blank string
-		    $hms = "";
-		    
-		    // do the hours first: there are 3600 seconds in an hour, so if we divide
-		    // the total number of seconds by 3600 and throw away the remainder, we're
-		    // left with the number of hours in those seconds
-		    $hours = intval(intval($sec) / 3600); 
-		
-		    // add hours to $hms (with a leading 0 if asked for)
-		    $hms .= ($padHours) 
-		          ? str_pad($hours, 2, "0", STR_PAD_LEFT). ":"
-		          : $hours. ":";
-		    
-		    // dividing the total seconds by 60 will give us the number of minutes
-		    // in total, but we're interested in *minutes past the hour* and to get
-		    // this, we have to divide by 60 again and then use the remainder
-		    $minutes = intval(($sec / 60) % 60); 
-		
-		    // add minutes to $hms (with a leading 0 if needed)
-		    $hms .= str_pad($minutes, 2, "0", STR_PAD_LEFT). ":";
-		
-		    // seconds past the minute are found by dividing the total number of seconds
-		    // by 60 and using the remainder
-		    $seconds = intval($sec % 60); 
-		
-		    // add seconds to $hms (with a leading 0 if needed)
-		    $hms .= str_pad($seconds, 2, "0", STR_PAD_LEFT);
-		
-		    // done!
-		    return $hms;
-		    
-		  }
-		
 
 	}	
 ?>

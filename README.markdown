@@ -1,23 +1,28 @@
-# Google Analytics Dashboard Panel
+# SEOmoz Dashboard Panel
  
 * Version: 1.0
 * Author: Nick Ryall
-* Build Date: 2011-03-14
+* Build Date: 2011-08-24
 * Requirements: Symphony 2.2, Dashboard extension
 
 ## Purpose
-To provide a Dashboard summary screen for users. Dashboard "panels" can contain any information. This extension provides the framework for building a Dashboard, and provides four basic panel types. Other extensions can provide their own panel types.
+
+Provides SEO related info, like inbound links, retrieved using the SEOmoz Linkscape API.
 
 ## Installation
  
-1. Upload the 'dashboard_analytics' folder in this archive to your Symphony 'extensions' folder
-2. Enable it by selecting "Dashboard Analytics" in the list, choose Enable from the with-selected menu, then click Apply
-3. Navigate to the Dashboard from the "Dashboard" link in the primary navigation and select "Dashboard Analytics" from the "Create New" list
+1. Upload the 'dashboard_seomoz' folder in this archive to your Symphony 'extensions' folder
+2. Enable it by selecting "Dashboard SEOmoz" in the list, choose Enable from the with-selected menu, then click Apply
+3. Navigate to the Dashboard from the "Dashboard" link in the primary navigation and select "Dashboard SEOmoz" from the "Create New" list
 
 ## Usage
 
-You need to supply your Google Analytics user account `Email` and `Password`. The `Profile ID` is the ID of the website profile. This can be found in the URL of your site report in Analytics, for example:
+You will need to enter the following information when creating a new panel:
 
-	https://www.google.com/analytics/reporting/?id=123456789
+* Domain
+* Access ID
+* Secret Key
 
-Please note that your login details will be stored as plain text.
+If you have an SEOmoz.org account, you can log in and find your credentials on the `http://www.seomoz.org/api` page. If you don\'t have a free SEOmoz.org account, sign up, and visit the API page to retrieve your API credentials
+
+Please note that your details will be stored as plain text.
