@@ -96,8 +96,9 @@
 				$this->secret_key = $secret_key;
 				
 				$seomozapi = new SEOMozAPI( $access_id, $secret_key );
-				$urlmetrics = simplexml_load_string( $seomozapi->urlmetrics( $domain ) );
+				$urlmetrics = json_decode( $seomozapi->urlmetrics( $domain ) );
 				
+	
 				$target_url = preg_replace('!http(s)?:\/\/!', '', $domain);
 				
 				$attribution = str_replace( '/', '%252F', rtrim($target_url,"/") );

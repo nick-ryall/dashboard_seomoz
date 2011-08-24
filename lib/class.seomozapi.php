@@ -49,13 +49,7 @@ class SEOMozAPI {
 			curl_close($ch);
 			apc_store('seomoz_cache', $data);
 		}
-		
-
-		require_once 'json_to_xml.php';
-		$xml = Json_to_xml::convert($data);
-		
-		
-		return $xml;
+		return $data;
 	}
 
 	/**
