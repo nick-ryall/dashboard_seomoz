@@ -92,12 +92,9 @@
 		public function display_results($access_id, $secret_key, $domain) {
 	
 			try {
-				$this->access_id = $access_id;
-				$this->secret_key = $secret_key;
 				
 				$seomozapi = new SEOMozAPI( $access_id, $secret_key );
 				$urlmetrics = json_decode( $seomozapi->urlmetrics( $domain ) );
-				
 	
 				$target_url = preg_replace('!http(s)?:\/\/!', '', $domain);
 				

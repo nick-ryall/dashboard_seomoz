@@ -49,6 +49,7 @@ class SEOMozAPI {
 			curl_close($ch);
 			apc_store('seomoz_cache', $data);
 		}
+		
 		return $data;
 	}
 
