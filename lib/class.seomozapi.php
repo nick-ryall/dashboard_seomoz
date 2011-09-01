@@ -38,8 +38,10 @@ class SEOMozAPI {
 		$argument = urlencode( $argument );
 		$request_url = "http://lsapi.seomoz.com/linkscape/{$api_call}/{$argument}?AccessID={$this->access_id}&Expires={$timestamp}&Signature=" . $this->generate_signature( $timestamp );
 		
+		$cache = new Cacheable(Symphony::Database());
+		$cache_id = md5('seomoz_cache');
+		$data = $cache->check($cache_id);
 		
-		$data = apc_fetch('seomoz_cache');
 		if ( false == $data) {
 			$ch = curl_init(); 
 			curl_setopt($ch, CURLOPT_URL, $request_url); 
@@ -47,10 +49,10 @@ class SEOMozAPI {
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE); 
 			$data = curl_exec($ch); 
 			curl_close($ch);
-			apc_store('seomoz_cache', $data);
+			$data = $cache->write($cache_id, $data, 60);
 		}
 		
-		return $data;
+		return $data['data'];
 	}
 
 	/**

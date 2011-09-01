@@ -26,3 +26,7 @@ You will need to enter the following information when creating a new panel:
 If you have an SEOmoz.org account, you can log in and find your credentials on the 'http://www.seomoz.org/api' page. If you don't have a free SEOmoz.org account, sign up, and visit the API page to retrieve your API credentials.
 
 Please note that your details will be stored as plain text.
+
+## Change Log
+
+* Changed from APC to native Symphony caching. 
